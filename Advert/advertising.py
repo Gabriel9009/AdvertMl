@@ -1,29 +1,34 @@
-# streamlit_app.py
 import streamlit as st
 import joblib
 import os
 import numpy as np
 
-# Load your trained model
-try:
-    model_path = "sales_model.pkl"
-    if os.path.exists(model_path):
-        model = joblib.load(model_path)
-        st.success("Model loaded successfully!")
-    else:
-        st.error(f"Model file not found at: {os.path.abspath(model_path)}")
-except Exception as e:
-    st.error(f"Error loading model: {str(e)}")
+# Try multiple common locations for the model file
+MODEL_PATHS = [
+    "sales_model.pkl",                         # Same directory
+    os.path.join("models", "sales_model.pkl"),  # models/ subdirectory
+    os.path.join(os.path.dirname(__file__), "sales_model.pkl")  # Absolute path
+]
 
-st.title("📈 Advertising Budget → Sales Predictor")
+def load_model():
+    for path in MODEL_PATHS:
+        if os.path.exists(path):
+            try:
+                return joblib.load(path)
+            except Exception as e:
+                st.error(f"Error loading model from {path}: {str(e)}")
+    st.error("Model file not found in any standard locations")
+    return None
 
-# User inputs
-tv_budget = st.slider("TV Ad Budget ($)", 0, 300, 100)
-radio_budget = st.slider("Radio Ad Budget ($)", 0, 50, 25)
-newspaper_budget = st.slider("Newspaper Ad Budget ($)", 0, 120, 30)
+model = load_model()
 
-# Prediction
-if 'model' in locals():  # Make sure model was loaded before prediction
-    input_data = np.array([[tv_budget, radio_budget, newspaper_budget]])
-    predicted_sales = model.predict(input_data)[0]
-    st.write(f"### 🔮 Predicted Sales: {predicted_sales:.2f} units")
+if model:
+    st.title("📈 Advertising Budget → Sales Predictor")
+    
+    tv = st.slider("TV Budget ($)", 0, 300, 100)
+    radio = st.slider("Radio Budget ($)", 0, 50, 25)
+    newspaper = st.slider("Newspaper Budget ($)", 0, 120, 30)
+    
+    if st.button("Predict Sales"):
+        prediction = model.predict([[tv, radio, newspaper]])[0]
+        st.success(f"Predicted Sales: ${prediction:,.2f}")
